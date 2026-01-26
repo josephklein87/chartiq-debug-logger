@@ -43,8 +43,6 @@ window.CIQLogger.setScopes("all");
 
 The setScopes command sets what the logger is tracking. As an example, if you wanted it to only track the functions involving the x-axis, you would write this instead:
 
-window.CIQLogger.setScopes("all");
-
 ```js
 window.CIQLogger.setScopes("xaxis");
 ```
