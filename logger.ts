@@ -9,8 +9,11 @@ type TooledFunction = {
 type LoggerOutput = {
     time: Date;
     functionName: string;
-    args: any[];
+    args?: any[];
     returnValue?: any;
+    DT?: Date;
+    Symbol?: string;
+    "Data Point"?: any;
 };
 
 class CIQLogger {
@@ -71,12 +74,15 @@ class CIQLogger {
                 parent: CIQ.ChartEngine.prototype,
                 functionName: "drawXAxis",
             },
+            {
+                scope: "updateChartData",
+                parent: CIQ.ChartEngine.prototype,
+                functionName: "updateChartData",
+            },
         ];
 
         this.output = [];
-    };
-
-   
+    }
 
     setScopes(
         scopes: "all" | String | Function | object | (Function | object)[],
@@ -146,16 +152,32 @@ class CIQLogger {
 
         (parent as any)[funcName] = new Proxy(originalFunction, {
             apply(target: Function, thisArg: any, args: any[]) {
-                logger.addLog({
-                    time: new Date(),
-                    functionName: funcName,
-                    args,
-                });
-
-                console.log(
-                    `CIQLogger: Called ${funcName} with arguments:`,
-                    args,
-                );
+                if (funcName === "updateChartData") {
+                    console.log({
+                        time: new Date(),
+                        DT: args[0][0].DT,
+                        Symbol: args[2].secondarySeries || args[1].symbol,
+                        "Data Point": args[0],
+                        functionName: funcName,
+                    });
+                    logger.addLog({
+                        time: new Date(),
+                        DT: args[0][0].DT,
+                        Symbol: args[2].secondarySeries || args[1].symbol,
+                        "Data Point": args[0],
+                        functionName: funcName,
+                    });
+                } else {
+                    logger.addLog({
+                        time: new Date(),
+                        functionName: funcName,
+                        args,
+                    });
+                    console.log(
+                        `CIQLogger: Called ${funcName} with arguments:`,
+                        args,
+                    );
+                }
                 const result = Reflect.apply(target, thisArg, args);
                 if (result && typeof result.then === "function") {
                     return result.then((res: any) => {
@@ -165,6 +187,7 @@ class CIQLogger {
                             args,
                             returnValue: res,
                         });
+
                         console.log(`${funcName} returned (async):`, res);
                         return res;
                     });
@@ -183,7 +206,7 @@ class CIQLogger {
     }
 
     // some object reference stx and so are circular; handle them.
-    stringifyWithCircularPaths(obj: any, { depth = 10, space = 2 } = {}) {
+    stringifyWithCircularPaths(obj: any, { depth = 20, space = 5 } = {}) {
         console.log(depth);
         const seen = new WeakMap(); // object -> { path, level };
         const excludedObjects = {

@@ -58,6 +58,11 @@ class CIQLogger {
         scope: "xaxis",
         parent: CIQ.ChartEngine.prototype,
         functionName: "drawXAxis"
+      },
+      {
+        scope: "updateChartData",
+        parent: CIQ.ChartEngine.prototype,
+        functionName: "updateChartData"
       }
     ];
     this.output = [];
@@ -114,15 +119,32 @@ class CIQLogger {
     }
     parent[funcName] = new Proxy(originalFunction, {
       apply(target, thisArg, args) {
-        logger.addLog({
-          time: /* @__PURE__ */ new Date(),
-          functionName: funcName,
-          args
-        });
-        console.log(
-          `CIQLogger: Called ${funcName} with arguments:`,
-          args
-        );
+        if (funcName === "updateChartData") {
+          console.log({
+            time: /* @__PURE__ */ new Date(),
+            DT: args[0][0].DT,
+            Symbol: args[2].secondarySeries || args[1].symbol,
+            "Data Point": args[0],
+            functionName: funcName
+          });
+          logger.addLog({
+            time: /* @__PURE__ */ new Date(),
+            DT: args[0][0].DT,
+            Symbol: args[2].secondarySeries || args[1].symbol,
+            "Data Point": args[0],
+            functionName: funcName
+          });
+        } else {
+          logger.addLog({
+            time: /* @__PURE__ */ new Date(),
+            functionName: funcName,
+            args
+          });
+          console.log(
+            `CIQLogger: Called ${funcName} with arguments:`,
+            args
+          );
+        }
         const result = Reflect.apply(target, thisArg, args);
         if (result && typeof result.then === "function") {
           return result.then((res) => {
@@ -149,7 +171,7 @@ class CIQLogger {
     });
   }
   // some object reference stx and so are circular; handle them.
-  stringifyWithCircularPaths(obj, { depth = 10, space = 2 } = {}) {
+  stringifyWithCircularPaths(obj, { depth = 20, space = 5 } = {}) {
     console.log(depth);
     const seen = /* @__PURE__ */ new WeakMap();
     const excludedObjects = {
